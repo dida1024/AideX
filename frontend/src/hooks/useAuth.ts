@@ -9,6 +9,7 @@ import {
   type UserPublic,
   type UserRegister,
   UsersService,
+  type ApiResponse_UserPublic_,
 } from "@/client"
 import { handleError } from "@/utils"
 
@@ -20,11 +21,12 @@ const useAuth = () => {
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { data: user } = useQuery<UserPublic | null, Error>({
+  const { data: responseData } = useQuery<ApiResponse_UserPublic_, Error>({
     queryKey: ["currentUser"],
     queryFn: UsersService.readUserMe,
     enabled: isLoggedIn(),
   })
+  const user = responseData?.data
 
   const signUpMutation = useMutation({
     mutationFn: (data: UserRegister) =>
@@ -45,7 +47,11 @@ const useAuth = () => {
     const response = await LoginService.loginAccessToken({
       formData: data,
     })
-    localStorage.setItem("access_token", response.access_token)
+    if (!response.data?.access_token) {
+      throw new Error("No access token received")
+    }
+    localStorage.setItem("access_token", response.data.access_token)
+    console.log("token",response.data.access_token)
   }
 
   const loginMutation = useMutation({

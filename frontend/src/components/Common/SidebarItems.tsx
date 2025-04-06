@@ -4,7 +4,7 @@ import { Link as RouterLink } from "@tanstack/react-router"
 import { FiBriefcase, FiHome, FiSettings, FiUsers } from "react-icons/fi"
 import type { IconType } from "react-icons/lib"
 
-import type { UserPublic } from "@/client"
+import type { UserPublic, ApiResponse_UserPublic_ } from "@/client"
 
 const items = [
   { icon: FiHome, title: "Dashboard", path: "/" },
@@ -24,7 +24,9 @@ interface Item {
 
 const SidebarItems = ({ onClose }: SidebarItemsProps) => {
   const queryClient = useQueryClient()
-  const currentUser = queryClient.getQueryData<UserPublic>(["currentUser"])
+  const currentUserResponse = queryClient.getQueryData<ApiResponse_UserPublic_>(["currentUser"])
+  const currentUser = currentUserResponse?.data
+  console.log("currentUser", currentUser)
 
   const finalItems: Item[] = currentUser?.is_superuser
     ? [...items, { icon: FiUsers, title: "Admin", path: "/admin" }]

@@ -23,6 +23,8 @@ import type {
   LoginResetPasswordResponse,
   LoginRecoverPasswordHtmlContentData,
   LoginRecoverPasswordHtmlContentResponse,
+  PrivateCreateUserData,
+  PrivateCreateUserResponse,
   UsersReadUsersData,
   UsersReadUsersResponse,
   UsersCreateUserData,
@@ -53,7 +55,7 @@ export class ItemsService {
    * @param data The data for the request.
    * @param data.skip
    * @param data.limit
-   * @returns ItemsPublic Successful Response
+   * @returns ApiResponse_list_ItemPublic__ Successful Response
    * @throws ApiError
    */
   public static readItems(
@@ -77,7 +79,7 @@ export class ItemsService {
    * Create new item.
    * @param data The data for the request.
    * @param data.requestBody
-   * @returns ItemPublic Successful Response
+   * @returns ApiResponse_ItemPublic_ Successful Response
    * @throws ApiError
    */
   public static createItem(
@@ -99,7 +101,7 @@ export class ItemsService {
    * Get item by ID.
    * @param data The data for the request.
    * @param data.id
-   * @returns ItemPublic Successful Response
+   * @returns ApiResponse_ItemPublic_ Successful Response
    * @throws ApiError
    */
   public static readItem(
@@ -123,7 +125,7 @@ export class ItemsService {
    * @param data The data for the request.
    * @param data.id
    * @param data.requestBody
-   * @returns ItemPublic Successful Response
+   * @returns ApiResponse_ItemPublic_ Successful Response
    * @throws ApiError
    */
   public static updateItem(
@@ -148,7 +150,7 @@ export class ItemsService {
    * Delete an item.
    * @param data The data for the request.
    * @param data.id
-   * @returns Message Successful Response
+   * @returns ApiResponse_NoneType_ Successful Response
    * @throws ApiError
    */
   public static deleteItem(
@@ -173,7 +175,7 @@ export class LoginService {
    * OAuth2 compatible token login, get an access token for future requests
    * @param data The data for the request.
    * @param data.formData
-   * @returns Token Successful Response
+   * @returns ApiResponse_Token_ Successful Response
    * @throws ApiError
    */
   public static loginAccessToken(
@@ -193,7 +195,7 @@ export class LoginService {
   /**
    * Test Token
    * Test access token
-   * @returns UserPublic Successful Response
+   * @returns ApiResponse_UserPublic_ Successful Response
    * @throws ApiError
    */
   public static testToken(): CancelablePromise<LoginTestTokenResponse> {
@@ -208,7 +210,7 @@ export class LoginService {
    * Password Recovery
    * @param data The data for the request.
    * @param data.email
-   * @returns Message Successful Response
+   * @returns ApiResponse_NoneType_ Successful Response
    * @throws ApiError
    */
   public static recoverPassword(
@@ -231,7 +233,7 @@ export class LoginService {
    * Reset password
    * @param data The data for the request.
    * @param data.requestBody
-   * @returns Message Successful Response
+   * @returns ApiResponse_NoneType_ Successful Response
    * @throws ApiError
    */
   public static resetPassword(
@@ -253,6 +255,8 @@ export class LoginService {
    * HTML Content for Password Recovery
    * @param data The data for the request.
    * @param data.email
+   * @param data.args
+   * @param data.kwargs
    * @returns string Successful Response
    * @throws ApiError
    */
@@ -265,6 +269,34 @@ export class LoginService {
       path: {
         email: data.email,
       },
+      query: {
+        args: data.args,
+        kwargs: data.kwargs,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+}
+
+export class PrivateService {
+  /**
+   * Create User
+   * Create a new user.
+   * @param data The data for the request.
+   * @param data.requestBody
+   * @returns UserPublic Successful Response
+   * @throws ApiError
+   */
+  public static createUser(
+    data: PrivateCreateUserData,
+  ): CancelablePromise<PrivateCreateUserResponse> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/v1/private/users/",
+      body: data.requestBody,
+      mediaType: "application/json",
       errors: {
         422: "Validation Error",
       },
@@ -279,7 +311,7 @@ export class UsersService {
    * @param data The data for the request.
    * @param data.skip
    * @param data.limit
-   * @returns UsersPublic Successful Response
+   * @returns ApiResponse_list_UserPublic__ Successful Response
    * @throws ApiError
    */
   public static readUsers(
@@ -303,7 +335,7 @@ export class UsersService {
    * Create new user.
    * @param data The data for the request.
    * @param data.requestBody
-   * @returns UserPublic Successful Response
+   * @returns ApiResponse_UserPublic_ Successful Response
    * @throws ApiError
    */
   public static createUser(
@@ -323,7 +355,7 @@ export class UsersService {
   /**
    * Read User Me
    * Get current user.
-   * @returns UserPublic Successful Response
+   * @returns ApiResponse_UserPublic_ Successful Response
    * @throws ApiError
    */
   public static readUserMe(): CancelablePromise<UsersReadUserMeResponse> {
@@ -336,7 +368,7 @@ export class UsersService {
   /**
    * Delete User Me
    * Delete own user.
-   * @returns Message Successful Response
+   * @returns ApiResponse_NoneType_ Successful Response
    * @throws ApiError
    */
   public static deleteUserMe(): CancelablePromise<UsersDeleteUserMeResponse> {
@@ -351,7 +383,7 @@ export class UsersService {
    * Update own user.
    * @param data The data for the request.
    * @param data.requestBody
-   * @returns UserPublic Successful Response
+   * @returns ApiResponse_UserPublic_ Successful Response
    * @throws ApiError
    */
   public static updateUserMe(
@@ -373,7 +405,7 @@ export class UsersService {
    * Update own password.
    * @param data The data for the request.
    * @param data.requestBody
-   * @returns Message Successful Response
+   * @returns ApiResponse_NoneType_ Successful Response
    * @throws ApiError
    */
   public static updatePasswordMe(
@@ -395,7 +427,7 @@ export class UsersService {
    * Create new user without the need to be logged in.
    * @param data The data for the request.
    * @param data.requestBody
-   * @returns UserPublic Successful Response
+   * @returns ApiResponse_UserPublic_ Successful Response
    * @throws ApiError
    */
   public static registerUser(
@@ -417,7 +449,7 @@ export class UsersService {
    * Get a specific user by id.
    * @param data The data for the request.
    * @param data.userId
-   * @returns UserPublic Successful Response
+   * @returns ApiResponse_UserPublic_ Successful Response
    * @throws ApiError
    */
   public static readUserById(
@@ -441,7 +473,7 @@ export class UsersService {
    * @param data The data for the request.
    * @param data.userId
    * @param data.requestBody
-   * @returns UserPublic Successful Response
+   * @returns ApiResponse_UserPublic_ Successful Response
    * @throws ApiError
    */
   public static updateUser(
@@ -466,7 +498,7 @@ export class UsersService {
    * Delete a user.
    * @param data The data for the request.
    * @param data.userId
-   * @returns Message Successful Response
+   * @returns ApiResponse_NoneType_ Successful Response
    * @throws ApiError
    */
   public static deleteUser(
@@ -491,7 +523,7 @@ export class UtilsService {
    * Test emails.
    * @param data The data for the request.
    * @param data.emailTo
-   * @returns Message Successful Response
+   * @returns ApiResponse_NoneType_ Successful Response
    * @throws ApiError
    */
   public static testEmail(
@@ -511,7 +543,7 @@ export class UtilsService {
 
   /**
    * Health Check
-   * @returns boolean Successful Response
+   * @returns ApiResponse_bool_ Successful Response
    * @throws ApiError
    */
   public static healthCheck(): CancelablePromise<UtilsHealthCheckResponse> {
