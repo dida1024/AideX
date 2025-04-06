@@ -2,29 +2,27 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import col, delete, func, select
 
 from app import crud
 from app.api.deps import (
     CurrentUser,
-    SessionDep,
     get_current_active_superuser,
 )
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.models import (
     Item,
-    Message,
-    UpdatePassword,
+    MessageResponse,
+    PasswordResetConfirm,
     User,
     UserCreate,
     UserPublic,
-    UserRegister,
+    UserCreate,
     UsersPublic,
     UserUpdate,
-    UserUpdateMe,
 )
 from app.utils import generate_new_account_email, send_email
+from beanie.odm.fields import PydanticObjectId
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -34,35 +32,42 @@ router = APIRouter(prefix="/users", tags=["users"])
     dependencies=[Depends(get_current_active_superuser)],
     response_model=UsersPublic,
 )
-def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
+async def read_users(skip: int = 0, limit: int = 100) -> Any:
     """
     Retrieve users.
     """
-
-    count_statement = select(func.count()).select_from(User)
-    count = session.exec(count_statement).one()
-
-    statement = select(User).offset(skip).limit(limit)
-    users = session.exec(statement).all()
-
-    return UsersPublic(data=users, count=count)
+    # 获取用户总数
+    count = await User.count()
+    
+    # 获取分页用户列表
+    users = await User.find().skip(skip).limit(limit).to_list()
+    users_public = []
+    for user in users:
+        try:
+            user_pulic = user.to_public()
+            users_public.append(user_pulic)
+        except Exception as e:
+            continue
+    
+    # return UserWithItems(data=users, count=count)
+    return UsersPublic(data=users_public,count=count)
 
 
 @router.post(
     "/", dependencies=[Depends(get_current_active_superuser)], response_model=UserPublic
 )
-def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
+async def create_user(*, user_in: UserCreate) -> Any:
     """
     Create new user.
     """
-    user = crud.get_user_by_email(session=session, email=user_in.email)
+    user = await crud.get_user_by_email(email=user_in.email)
     if user:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system.",
         )
 
-    user = crud.create_user(session=session, user_create=user_in)
+    user = await crud.create_user(user_create=user_in)
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
@@ -76,30 +81,26 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
 
 
 @router.patch("/me", response_model=UserPublic)
-def update_user_me(
-    *, session: SessionDep, user_in: UserUpdateMe, current_user: CurrentUser
+async def update_user_me(
+    *, user_in: UserUpdate, current_user: CurrentUser
 ) -> Any:
     """
     Update own user.
     """
-
     if user_in.email:
-        existing_user = crud.get_user_by_email(session=session, email=user_in.email)
+        existing_user = await crud.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
             raise HTTPException(
                 status_code=409, detail="User with this email already exists"
             )
-    user_data = user_in.model_dump(exclude_unset=True)
-    current_user.sqlmodel_update(user_data)
-    session.add(current_user)
-    session.commit()
-    session.refresh(current_user)
-    return current_user
+    
+    user = await crud.update_user(db_user=current_user, user_in=user_in)
+    return user
 
 
-@router.patch("/me/password", response_model=Message)
-def update_password_me(
-    *, session: SessionDep, body: UpdatePassword, current_user: CurrentUser
+@router.patch("/me/password", response_model=MessageResponse)
+async def update_password_me(
+    *, body: PasswordResetConfirm, current_user: CurrentUser
 ) -> Any:
     """
     Update own password.
@@ -110,23 +111,22 @@ def update_password_me(
         raise HTTPException(
             status_code=400, detail="New password cannot be the same as the current one"
         )
-    hashed_password = get_password_hash(body.new_password)
-    current_user.hashed_password = hashed_password
-    session.add(current_user)
-    session.commit()
-    return Message(message="Password updated successfully")
+    
+    current_user.hashed_password = get_password_hash(body.new_password)
+    await current_user.save()
+    return MessageResponse(MessageResponse="Password updated successfully")
 
 
 @router.get("/me", response_model=UserPublic)
-def read_user_me(current_user: CurrentUser) -> Any:
+async def read_user_me(current_user: CurrentUser) -> Any:
     """
     Get current user.
     """
     return current_user
 
 
-@router.delete("/me", response_model=Message)
-def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
+@router.delete("/me", response_model=MessageResponse)
+async def delete_user_me(current_user: CurrentUser) -> Any:
     """
     Delete own user.
     """
@@ -134,36 +134,41 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
-    session.delete(current_user)
-    session.commit()
-    return Message(message="User deleted successfully")
+    
+    # 删除用户相关的所有项目
+    await Item.find(Item.owner == current_user).delete()
+    await current_user.delete()
+    return MessageResponse(detail="User deleted successfully")
 
 
 @router.post("/signup", response_model=UserPublic)
-def register_user(session: SessionDep, user_in: UserRegister) -> Any:
+async def register_user(user_in: UserCreate) -> Any:
     """
     Create new user without the need to be logged in.
     """
-    user = crud.get_user_by_email(session=session, email=user_in.email)
+    user = await crud.get_user_by_email(email=user_in.email)
     if user:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system",
         )
     user_create = UserCreate.model_validate(user_in)
-    user = crud.create_user(session=session, user_create=user_create)
+    user = await crud.create_user(user_create=user_create)
     return user
 
 
 @router.get("/{user_id}", response_model=UserPublic)
-def read_user_by_id(
-    user_id: uuid.UUID, session: SessionDep, current_user: CurrentUser
+async def read_user_by_id(
+    user_id: uuid.UUID, current_user: CurrentUser
 ) -> Any:
     """
     Get a specific user by id.
     """
-    user = session.get(User, user_id)
-    if user == current_user:
+    user = await User.get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if user.id == current_user.id:
         return user
     if not current_user.is_superuser:
         raise HTTPException(
@@ -178,49 +183,48 @@ def read_user_by_id(
     dependencies=[Depends(get_current_active_superuser)],
     response_model=UserPublic,
 )
-def update_user(
+async def update_user(
     *,
-    session: SessionDep,
-    user_id: uuid.UUID,
+    user_id: PydanticObjectId,
     user_in: UserUpdate,
 ) -> Any:
     """
     Update a user.
     """
-
-    db_user = session.get(User, user_id)
+    db_user = await User.get(user_id)
     if not db_user:
         raise HTTPException(
             status_code=404,
             detail="The user with this id does not exist in the system",
         )
+    
     if user_in.email:
-        existing_user = crud.get_user_by_email(session=session, email=user_in.email)
+        existing_user = await crud.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != user_id:
             raise HTTPException(
                 status_code=409, detail="User with this email already exists"
             )
 
-    db_user = crud.update_user(session=session, db_user=db_user, user_in=user_in)
+    db_user = await crud.update_user(db_user=db_user, user_in=user_in)
     return db_user
 
 
 @router.delete("/{user_id}", dependencies=[Depends(get_current_active_superuser)])
-def delete_user(
-    session: SessionDep, current_user: CurrentUser, user_id: uuid.UUID
-) -> Message:
+async def delete_user(
+    current_user: CurrentUser, user_id: PydanticObjectId
+) -> MessageResponse:
     """
     Delete a user.
     """
-    user = session.get(User, user_id)
+    user = await User.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if user == current_user:
+    if user.id == current_user.id:
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
-    statement = delete(Item).where(col(Item.owner_id) == user_id)
-    session.exec(statement)  # type: ignore
-    session.delete(user)
-    session.commit()
-    return Message(message="User deleted successfully")
+    
+    # 删除用户相关的所有项目
+    await Item.find(Item.owner == user).delete()
+    await user.delete()
+    return MessageResponse(detail="User deleted successfully")

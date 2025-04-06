@@ -18,6 +18,28 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
       - POSTGRES_USER=${POSTGRES_USER?Variable not set}
       - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+      
+  mongo:
+    image: mongo:8.0.6
+    restart: always
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand('ping').ok"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    volumes:
+      - app-mongo-data:/var/lib/mongo/data
+    env_file:
+      - .env
+    ports:
+      - "27017:27017"
+    command: ["mongod", "--bind_ip_all", "--auth"]
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-root}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-securepassword}
+      - MONGO_INITDB_DATABASE=${MONGO_DB:-mydatabase}
+
 
   adminer:
     image: adminer
@@ -164,6 +186,7 @@ services:
       - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.middlewares=https-redirect
 volumes:
   app-db-data:
+  app-mongo-data:
 
 networks:
   traefik-public:

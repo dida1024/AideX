@@ -80,11 +80,11 @@ def test_update_user(db: Session) -> None:
     password = random_lower_string()
     email = random_email()
     user_in = UserCreate(email=email, password=password, is_superuser=True)
-    user = crud.create_user(session=db, user_create=user_in)
+    user = crud.create_user(user_create=user_in)
     new_password = random_lower_string()
     user_in_update = UserUpdate(password=new_password, is_superuser=True)
     if user.id is not None:
-        crud.update_user(session=db, db_user=user, user_in=user_in_update)
+        crud.update_user(db_user=user, user_in=user_in_update)
     user_2 = db.get(User, user.id)
     assert user_2
     assert user.email == user_2.email

@@ -68,6 +68,24 @@ class Settings(BaseSettings):
             port=self.POSTGRES_PORT,
             path=self.POSTGRES_DB,
         )
+        
+    MONGO_SERVER: str
+    MONGO_PORT: int = 27017
+    MONGO_DB: str
+    MONGO_USER: str
+    MONGO_PASSWORD: str
+    
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def MONGODB_URI(self) -> str:
+        return MultiHostUrl.build(
+            scheme="mongodb",
+            username=self.MONGO_USER,
+            password=self.MONGO_PASSWORD,
+            host=self.MONGO_SERVER,
+            port=self.MONGO_PORT,
+            # path=self.MONGO_DB,
+        )
 
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False
