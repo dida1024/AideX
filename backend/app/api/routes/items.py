@@ -6,6 +6,7 @@ from beanie.odm.fields import PydanticObjectId
 
 from app.api.deps import CurrentUser
 from app.models import Item, ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, MessageResponse, UserPublic
+from app.models.response import ApiResponse, PaginatedResponse
 from app.exceptions.auth_exceptions import PermissionDenied
 from app.exceptions.item_exceptions import ItemNotFound
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/items", tags=["items"])
 
 
-@router.get("/", response_model=ItemsPublic)
+@router.get("/", response_model=ApiResponse[list[ItemPublic]])
 async def read_items(
     current_user: CurrentUser,
     skip: int = 0,
@@ -40,10 +41,16 @@ async def read_items(
             logger.error(f"Error processing item {item.id}: {str(e)}")
             continue
     
-    return ItemsPublic(data=items_public, count=count)
+    # 返回分页响应
+    return PaginatedResponse.create(
+        items=items_public,
+        total=count,
+        page=skip // limit + 1 if limit else 1,
+        page_size=limit
+    )
 
 
-@router.get("/{id}", response_model=ItemPublic)
+@router.get("/{id}", response_model=ApiResponse[ItemPublic])
 async def read_item(current_user: CurrentUser, id: PydanticObjectId) -> Any:
     """
     Get item by ID.
@@ -54,10 +61,11 @@ async def read_item(current_user: CurrentUser, id: PydanticObjectId) -> Any:
     if not current_user.is_superuser and (item.owner_id != current_user.id):
         raise PermissionDenied
     
-    return await ItemPublic.from_item(item)
+    item_public = await ItemPublic.from_item(item)
+    return ApiResponse.success_response(data=item_public)
 
 
-@router.post("/", response_model=ItemPublic)
+@router.post("/", response_model=ApiResponse[ItemPublic])
 async def create_item(
     *, current_user: CurrentUser, item_in: ItemCreate
 ) -> Any:
@@ -69,10 +77,15 @@ async def create_item(
     item = Item.model_validate(item_data)
     await item.insert()
     
-    return await ItemPublic.from_item(item)
+    item_public = await ItemPublic.from_item(item)
+    return ApiResponse.success_response(
+        data=item_public,
+        message="项目创建成功",
+        code=201
+    )
 
 
-@router.put("/{id}", response_model=ItemPublic)
+@router.put("/{id}", response_model=ApiResponse[ItemPublic])
 async def update_item(
     *,
     current_user: CurrentUser,
@@ -93,13 +106,17 @@ async def update_item(
         setattr(item, field, value)
     
     await item.save()
-    return await ItemPublic.from_item(item)
+    item_public = await ItemPublic.from_item(item)
+    return ApiResponse.success_response(
+        data=item_public,
+        message="项目更新成功"
+    )
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", response_model=ApiResponse[None])
 async def delete_item(
     current_user: CurrentUser, id: PydanticObjectId
-) -> MessageResponse:
+) -> Any:
     """
     Delete an item.
     """
@@ -110,4 +127,4 @@ async def delete_item(
         raise PermissionDenied
     
     await item.delete()
-    return MessageResponse(detail="Item deleted successfully")
+    return ApiResponse.success_response(message="项目删除成功")
