@@ -1,13 +1,14 @@
-import uuid
 from typing import Any
 import logging
 
-from fastapi import APIRouter, HTTPException, Depends
-from sqlmodel import func, select
+from fastapi import APIRouter
 from beanie.odm.fields import PydanticObjectId
 
 from app.api.deps import CurrentUser
 from app.models import Item, ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, MessageResponse, UserPublic
+from app.exceptions.auth_exceptions import PermissionDenied
+from app.exceptions.item_exceptions import ItemNotFound
+
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +50,9 @@ async def read_item(current_user: CurrentUser, id: PydanticObjectId) -> Any:
     """
     item = await Item.get(id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise ItemNotFound
     if not current_user.is_superuser and (item.owner_id != current_user.id):
-        raise HTTPException(status_code=400, detail="Not enough permissions")
+        raise PermissionDenied
     
     return await ItemPublic.from_item(item)
 
@@ -83,9 +84,9 @@ async def update_item(
     """
     item = await Item.get(id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise ItemNotFound
     if not current_user.is_superuser and (item.owner_id != current_user.id):
-        raise HTTPException(status_code=400, detail="Not enough permissions")
+        raise PermissionDenied
     
     update_data = item_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -104,9 +105,9 @@ async def delete_item(
     """
     item = await Item.get(id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise ItemNotFound
     if not current_user.is_superuser and (item.owner_id != current_user.id):
-        raise HTTPException(status_code=400, detail="Not enough permissions")
+        raise PermissionDenied
     
     await item.delete()
     return MessageResponse(detail="Item deleted successfully")

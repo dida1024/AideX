@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app import crud
 from app.api.deps import (
@@ -23,6 +23,8 @@ from app.models import (
 )
 from app.utils import generate_new_account_email, send_email
 from beanie.odm.fields import PydanticObjectId
+from app.exceptions.auth_exceptions import AuthFail, PermissionDenied,SuperCanNotDeleteSelf
+from app.exceptions.user_exceptions import IncorrectPassword, PasswordSame, UserNotFound,UserNotActive,UserExists
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -62,10 +64,7 @@ async def create_user(*, user_in: UserCreate) -> Any:
     """
     user = await crud.get_user_by_email(email=user_in.email)
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system.",
-        )
+        raise UserNotFound
 
     user = await crud.create_user(user_create=user_in)
     if settings.emails_enabled and user_in.email:
@@ -90,9 +89,7 @@ async def update_user_me(
     if user_in.email:
         existing_user = await crud.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
-            raise HTTPException(
-                status_code=409, detail="User with this email already exists"
-            )
+            raise UserExists
     
     user = await crud.update_user(db_user=current_user, user_in=user_in)
     return user
@@ -106,11 +103,9 @@ async def update_password_me(
     Update own password.
     """
     if not verify_password(body.current_password, current_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Incorrect password")
+        raise IncorrectPassword
     if body.current_password == body.new_password:
-        raise HTTPException(
-            status_code=400, detail="New password cannot be the same as the current one"
-        )
+        raise PasswordSame
     
     current_user.hashed_password = get_password_hash(body.new_password)
     await current_user.save()
@@ -131,9 +126,7 @@ async def delete_user_me(current_user: CurrentUser) -> Any:
     Delete own user.
     """
     if current_user.is_superuser:
-        raise HTTPException(
-            status_code=403, detail="Super users are not allowed to delete themselves"
-        )
+        raise SuperCanNotDeleteSelf
     
     # 删除用户相关的所有项目
     await Item.find(Item.owner == current_user).delete()
@@ -148,10 +141,7 @@ async def register_user(user_in: UserCreate) -> Any:
     """
     user = await crud.get_user_by_email(email=user_in.email)
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
-        )
+        raise UserExists
     user_create = UserCreate.model_validate(user_in)
     user = await crud.create_user(user_create=user_create)
     return user
@@ -166,15 +156,11 @@ async def read_user_by_id(
     """
     user = await User.get(user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
+        raise UserNotFound
     if user.id == current_user.id:
         return user
     if not current_user.is_superuser:
-        raise HTTPException(
-            status_code=403,
-            detail="The user doesn't have enough privileges",
-        )
+        raise PermissionDenied
     return user
 
 
@@ -193,17 +179,12 @@ async def update_user(
     """
     db_user = await User.get(user_id)
     if not db_user:
-        raise HTTPException(
-            status_code=404,
-            detail="The user with this id does not exist in the system",
-        )
+        raise UserNotFound
     
     if user_in.email:
         existing_user = await crud.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != user_id:
-            raise HTTPException(
-                status_code=409, detail="User with this email already exists"
-            )
+            raise UserExists
 
     db_user = await crud.update_user(db_user=db_user, user_in=user_in)
     return db_user
@@ -218,11 +199,9 @@ async def delete_user(
     """
     user = await User.get(user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise UserNotFound
     if user.id == current_user.id:
-        raise HTTPException(
-            status_code=403, detail="Super users are not allowed to delete themselves"
-        )
+        raise SuperCanNotDeleteSelf
     
     # 删除用户相关的所有项目
     await Item.find(Item.owner == user).delete()

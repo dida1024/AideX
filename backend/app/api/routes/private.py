@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, EmailStr
 
 from app.core.security import get_password_hash
@@ -8,6 +8,8 @@ from app.models import (
     User,
     UserPublic,
 )
+from app.exceptions.user_exceptions import UserNotFound,UserCreateFail
+
 
 router = APIRouter(tags=["private"], prefix="/private")
 
@@ -27,10 +29,7 @@ async def create_user(user_in: PrivateUserCreate) -> Any:
     # 检查邮箱是否已存在
     existing_user = await User.find_one(User.email == user_in.email)
     if existing_user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system.",
-        )
+        raise UserNotFound
 
     # 创建用户数据
     user_data = {
@@ -44,9 +43,6 @@ async def create_user(user_in: PrivateUserCreate) -> Any:
         user = User.model_validate(user_data)
         await user.insert()
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail="An error occurred while creating the user.",
-        )
+        raise UserCreateFail
 
     return user

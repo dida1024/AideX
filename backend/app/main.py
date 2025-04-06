@@ -7,6 +7,8 @@ from contextlib import asynccontextmanager
 from app.api.main import api_router
 from app.core.config import settings
 from app.core.db import init_mongo, client
+from app.exceptions.base import BizException
+from app.core.exception_handler import biz_exception_handler
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -27,6 +29,9 @@ app = FastAPI(
     generate_unique_id_function=custom_generate_unique_id,
     lifespan=lifespan,
 )
+
+# 注册异常处理器
+app.add_exception_handler(BizException, biz_exception_handler)
 
 # Set all CORS enabled origins
 if settings.all_cors_origins:
