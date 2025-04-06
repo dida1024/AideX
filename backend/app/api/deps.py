@@ -11,7 +11,6 @@ from beanie.odm.fields import PydanticObjectId
 
 from app.core import security
 from app.core.config import settings
-from app.core.db import engine
 from app.models import TokenData, User
 
 logger = logging.getLogger(__name__)
