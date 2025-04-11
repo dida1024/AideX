@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from beanie.odm.fields import PydanticObjectId
 
 from app.api.deps import CurrentUser
-from app.models import Item, ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, MessageResponse, UserPublic
+from app.models import Item, ItemCreate, ItemPublic, ItemUpdate
 from app.models.response import ApiResponse, PaginatedResponse
 from app.exceptions.auth_exceptions import PermissionDenied
 from app.exceptions.item_exceptions import ItemNotFound

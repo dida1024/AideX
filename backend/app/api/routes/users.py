@@ -22,7 +22,7 @@ from app.models import (
     UserUpdate,
 )
 from app.models.response import ApiResponse, PaginatedResponse
-from app.utils import generate_new_account_email, send_email
+from app.utils.email_helper import generate_new_account_email, send_email
 from beanie.odm.fields import PydanticObjectId
 from app.exceptions.auth_exceptions import AuthFail, PermissionDenied,SuperCanNotDeleteSelf
 from app.exceptions.user_exceptions import IncorrectPassword, PasswordSame, UserNotFound,UserNotActive,UserExists

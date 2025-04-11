@@ -115,5 +115,8 @@ class Settings(BaseSettings):
 
         return self
 
+    DOWNLOAD_DIR: str = "./downloads"
+    UPLOAD_DIR: str = "./uploads"
+
 
 settings = Settings()  # type: ignore

@@ -1,9 +1,8 @@
-from sqlmodel import Session, create_engine, select
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
 from app import crud
 from app.core.config import settings
-from app.models import User, Item, UserCreate
+from app.models import User, models, UserCreate
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,7 +23,7 @@ async def init_mongo(client: AsyncIOMotorClient, db_name: str) -> None:
         # 初始化 Beanie
         await init_beanie(
             database=database,
-            document_models=[User, Item],
+            document_models=models,
             allow_index_dropping=True
         )
         logger.info("Successfully initialized Beanie")
