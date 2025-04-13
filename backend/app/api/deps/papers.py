@@ -1,10 +1,7 @@
 import logging
-from typing import Callable
-from functools import partial
 from fastapi import File, Form, UploadFile, Depends
 
 from app.exceptions.base import ParamException
-from app.exceptions.file_exceptions import FileTypeError
 from app.models.papers import PaperCreateForm
 from app.utils.file_helper import FileHelper
 
@@ -32,12 +29,14 @@ async def validate_paper_file(file: UploadFile = File(...)) -> UploadFile:
     return await FileHelper.validate_upload_file(file, allowed_types=PAPER_ALLOWED_TYPES)
 
 async def get_paper_form(
+    # 这里声明了数据来源
     file_name: str = Form(..., min_length=1, max_length=255),
     file: UploadFile = Depends(validate_paper_file),
     is_process: bool = Form(default=True)
 ) -> PaperCreateForm:
     """获取并验证表单数据"""
     try:
+        # 这里去做数据校验
         return PaperCreateForm(
             file_name=file_name,
             file=file,
