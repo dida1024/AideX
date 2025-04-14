@@ -63,7 +63,8 @@ async def create_paper(
     # 处理文件上传
     file_helper = FileHelper(settings.DOWNLOAD_DIR)
     saved_file_name = await file_helper.save_from_upload_file(form_data.file)
-    paper_data["url"] = f"http://127.0.0.1:8000/api/v1/utils/download/?file_name={saved_file_name}"
+    saved_file_url = file_helper.gen_down_url(saved_file_name)
+    paper_data["url"] = saved_file_url
     
     # 创建并保存数据库记录
     paper = Paper.model_validate(paper_data)

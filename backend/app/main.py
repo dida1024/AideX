@@ -28,6 +28,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     generate_unique_id_function=custom_generate_unique_id,
     lifespan=lifespan,
+    root_path=settings.ROOTPATH
 )
 
 # 注册异常处理器

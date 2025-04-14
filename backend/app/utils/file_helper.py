@@ -3,8 +3,12 @@ from typing import Union
 from fastapi import File, UploadFile
 import aiofiles  # 用于异步文件操作
 import logging
+from app.core.config import settings
 
 from app.exceptions.file_exceptions import FileTypeError  # 用于日志记录
+
+logger = logging.getLogger(__name__)
+
 
 class FileHelper:
     def __init__(self, file_path: str):
@@ -89,6 +93,8 @@ class FileHelper:
         # 默认仅允许markdown文件
         if allowed_types is None:
             allowed_types = ["application/md"]
+        
+        logger.info("file_type: %s", file.content_type)
             
         if file.content_type not in allowed_types:
             raise FileTypeError
@@ -101,3 +107,7 @@ class FileHelper:
         if not is_exit:
             return ""
         return os.path.join(self.file_path, file_name)
+    
+    def gen_down_url(self, saved_file_name:str) -> str:
+        """生成文件的下载地址"""
+        return f"{settings.BACKEND_HOST}/api/v1/utils/download/?file_name={saved_file_name}"
