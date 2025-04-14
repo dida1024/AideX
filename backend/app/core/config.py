@@ -120,6 +120,12 @@ class Settings(BaseSettings):
 
     DOWNLOAD_DIR: str = "./downloads"
     UPLOAD_DIR: str = "./uploads"
+    
+    # Ai api
+    # deepseek
+    DEEPSEEK_URL: str = "https://ark.cn-beijing.volces.com/api/v3"
+    DEEPSEEK_API: str
+    DEEPSEEK_MODEL: str = "deepseek-r1-250120"
 
 
 settings = Settings()  # type: ignore
