@@ -100,6 +100,28 @@ class FileHelper:
             raise FileTypeError
         return file
         
+    @staticmethod
+    async def load_file(file_path: str) -> str:
+        """根据文件路径读取文件内容
+        
+        参数:
+            file_path: 文件路径
+            
+        返回:
+            str: 文件内容
+            
+        异常:
+            FileNotFoundError: 当文件不存在时抛出
+            IOError: 当文件读取失败时抛出
+        """
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"文件不存在: {file_path}")
+            
+        try:
+            async with aiofiles.open(file_path, mode='r', encoding='utf-8') as f:
+                return await f.read()
+        except Exception as e:
+            raise IOError(f"读取文件失败: {str(e)}")
     
     def gen_full_path(self, file_name: str) -> str:
         """生成文件的完整路径"""
